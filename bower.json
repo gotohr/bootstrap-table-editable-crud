@@ -1,0 +1,31 @@
+{
+  "name": "bootstrap-table-modal-editable",
+  "authors": [
+    "Ljubo Čanić <ljubo@mentat-labs.com>"
+  ],
+  "description": "",
+  "main": "js/bootstrap-table-modal-editable.js",
+  "moduleType": [],
+  "keywords": [
+    "bootstrap-table",
+    "editable",
+    "modal",
+    "editor"
+  ],
+  "license": "MIT",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "^3.3.6",
+    "x-editable": "^1.5.1",
+    "bootstrap-table": "^1.10.1",
+    "underscore": "^1.8.3",
+    "jquery-mockjax": "jquery-mockajax#^2.1.1"
+  }
+}

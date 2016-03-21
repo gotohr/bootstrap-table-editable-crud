@@ -1,0 +1,12 @@
+{
+  "total": 100,
+  "rows": [
+    { "id": 1, "name": "User 1", "group": 1, "isActive": 1, "module": [1] },
+    { "id": 2, "name": "User 2", "group": 2, "isActive": 0, "module": [1, 2] },
+    { "id": 3, "name": "User 3", "group": 3, "isActive": 1, "module": [1, 2, 3] },
+    { "id": 4, "name": "User 4", "group": 4, "isActive": 0, "module": [1, 2, 3, 4] },
+    { "id": 5, "name": "User 5", "group": 3, "isActive": 1, "module": [2, 3, 4] },
+    { "id": 6, "name": "User 6", "group": 2, "isActive": 0, "module": [3, 4] },
+    { "id": 7, "name": "User 7", "group": 1, "isActive": 1, "module": [4] }
+  ]
+}
