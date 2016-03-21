@@ -115,15 +115,12 @@
         },
         success: function (response, record) {
             if (response.success) {
-                console.log('success', response);
                 return true;
             } else {
                 record[this.idField] && (this.revertLocalUpdate(record));
             }
         },
         fail: function (response, record) {
-            console.log('fail', response);
-
             record[this.idField] && (this.revertLocalUpdate(record));
         }
     };
