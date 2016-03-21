@@ -5,7 +5,7 @@
 
 ## Development
 * go to public folder and `bower install`
-* in project root folder `php -S localhost:8888 -t ./public/`
+* in project root folder `php -S localhost:8888 -t .`
 
 ## Usage
 
@@ -13,7 +13,7 @@
 <script src="/somewhere/in/your/assets/bootstrap-table-editable-modal.js"></script>
 ```
 
-open `public/js/app.js` and see example
+open `js/app.js` and see example
 
 ## Todo
 * row update
