@@ -54,9 +54,7 @@ $(function() {
         ]
     };
 
-    var $bt = $('#bt-table');
-
-    $bt.bootstrapTable('destroy').bootstrapTable(btOptions);
+    var $bt = $('#bt-table').bootstrapTable('destroy').bootstrapTable(btOptions);
 
     $('#upsertModal').editableModal({
         table: $bt,

@@ -16,8 +16,10 @@
 
         var that = this;
         var idField = this.settings.table.bootstrapTable('getOptions').idField;
-        this.idField = idField = idField ? idField : 'id';
+        this.idField = idField = idField ? idField : this.settings.idField;
 
+        // todo read columns and editable metadata from bootstrap-table
+        // todo look in bootstrap-table-editable to extend bootstrap-table
         var editables = _(this.settings.btOptions.columns).chain()
             .map(function(column) {
                 return _(column.editable).extend({
@@ -26,11 +28,11 @@
                 });
             }).compact().value();
 
-        var columnNames = _(editables).pluck('field');
-
+        // todo fieldTpl id attribute should be namespaced?
+        // render table with key vals
         var EditableFields = {
             tableTpl: _.template('<table class="table table-bordered table-striped" style="clear: both"><%= rows %></table>'),
-            rowTpl: _.template('<tr><td><%= label %></td><td><%= editable %></td></tr>'),
+            rowTpl: _.template('<tr><td class="widthLabel"><%= label %></td><td class="widthValue"><%= editable %></td></tr>'),
             fieldTpl: _.template('<a href="#" id="<%= field %>" data-type="<%= type %>" data-title="<%= title %>"></a>'),
             renderRows: function(editables) {
                 return _(editables).chain()
@@ -48,57 +50,75 @@
             }
         };
 
+        // todo dump html to settings.container
         this.find('.modal-body').html(EditableFields.renderTable());
 
-        _(editables).each(function(edt) {
-            $('#' + edt.field)
-                .editable(edt)
-                .editable('setValue', edt.default);
+        // label/value width
+        this.find('.table .widthLabel').css({width: this.settings.widthLabel});
+        this.find('.table .widthValue').css({width: this.settings.widthValue});
+
+        // setup editables
+        _(editables).each(function(editable) {
+            $('#' + editable.field) // todo reference fields via something else
+                .on('hidden', that.settings.autoNext ? that.settings.showNextEditable : function() {}) // go to next editable field or override with empty function
+                .editable(editable)
+                .editable('setValue', editable.default)
         });
 
+        var columnNames = _(editables).pluck('field');
+
+        // todo update row
         var rowSnapshot;
         this.settings.table.on('editable-shown.bs.table', function (e, name, record) {
+            // console.log('bt table make row snapshot (editable-shown.bs.table)', e, name, record);
             rowSnapshot = _(record).pick(columnNames);
+            rowSnapshot[idField] = record[idField];
         });
 
+        // post to server after bt table editable saved (data changed)
         this.settings.table.on('editable-save.bs.table', function (e, name, record) {
+            // console.log('bt table editable-save.bs.table', e, name, record);
             var rec = that.settings.preSaveData(rowSnapshot, _(record).pick(columnNames));
+            rec[idField] = rowSnapshot[idField];
             $.post(that.settings.endpoint, JSON.stringify(rec),
                 function (response) {
-                    that.settings.success.call(that, response, record);
+                    that.settings.success.call(that, response, rec);
                 }).fail(function (response) {
-                    that.settings.fail.call(that, response, record);
+                    that.settings.fail.call(that, response, rec);
                 }
             );
         });
 
+        // handle revert if update gone wrong
         this.revertLocalUpdate = function (rec) {
             var data = that.settings.table.bootstrapTable('getData'),
                 index = _(data).chain().pluck('id').indexOf(rec[idField]).value();
             that.settings.table.bootstrapTable('updateRow', {index: index, row: rowSnapshot});
         };
 
+        // create button clicked
         this.settings.buttons.save.click(function() {
-            var values = _(editables).map(function(edt) {
-                return $('#' + edt.field).editable('getValue', edt.default)[edt.field];
+            var editableValues = _(editables).map(function(edt) {
+                return $('#' + edt.field)
+                    .editable('getValue', edt.default)[edt.field];
             });
-            var newRecordData = _.object(columnNames, values);
-            var record = that.settings.preSaveData({}, newRecordData);
+
+            var newRecord = that.settings.preSaveData({}, _.object(columnNames, editableValues));
 
             // todo implement update
             // var data = that.settings.table.bootstrapTable('getData'),
-            //     index = _(data).chain().pluck(idField).indexOf(record[idField]).value(),
-            //     update = {index: index, row: record};
+            //     index = _(data).chain().pluck(idField).indexOf(newRecord[idField]).value(),
+            //     update = {index: index, row: newRecord};
 
-            $.post(that.settings.endpoint, JSON.stringify(record),
+            $.post(that.settings.endpoint, JSON.stringify(newRecord),
                 function (response) {
-                    if (that.settings.success.call(that, response, record)) {
-                        record[idField] = response[idField];
-                        that.settings.table.bootstrapTable('append', record);
+                    if (that.settings.success.call(that, response, newRecord)) {
+                        newRecord[idField] = response[idField];
+                        that.settings.table.bootstrapTable('append', newRecord);
                     }
                     that.settings.buttons.close.click();
                 }).fail(function (response) {
-                    that.settings.fail.call(that, response, record);
+                    that.settings.fail.call(that, response, newRecord);
                     that.settings.buttons.close.click();
                 }
             );
@@ -110,7 +130,17 @@
 
     $.fn.editableModal.defaults = {
         mode: 'inline',
-        preSaveData: function(oldData, newData) {
+        idField: 'id',
+        widthLabel: '30%',
+        widthValue: '70%',
+        autoNext: false,
+        showNextEditable: function(e, reason) {
+            var $next = $(this).closest('tr').next().find('.editable');
+            setTimeout(function() {
+                $next.editable.enabledShow = $next.editable('show');
+            }, 100);
+        },
+        preSaveData: function (oldData, newData) {
             return newData;
         },
         success: function (response, record) {
