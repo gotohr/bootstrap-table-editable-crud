@@ -6,9 +6,9 @@
 
     'use strict';
 
-    $.fn.editableModal = function(options) {
+    $.fn.editableCRUD = function(options) {
 
-        this.settings = $.extend( true, $.fn.editableModal.defaults, options );
+        this.settings = $.extend( true, $.fn.editableCRUD.defaults, options );
 
         if (this.settings.table === undefined) throw "editableModel expects 'table' option!";
         if (this.settings.btOptions === undefined) throw "editableModel expects 'btOptions' (bootstrap-table options object with columns)!";
@@ -58,11 +58,14 @@
         this.find('.table .widthValue').css({width: this.settings.widthValue});
 
         // setup editables
+        // todo setup editables every time modal is shown
         _(editables).each(function(editable) {
             $('#' + editable.field) // todo reference fields via something else
                 .on('hidden', that.settings.autoNext ? that.settings.showNextEditable : function() {}) // go to next editable field or override with empty function
                 .editable(editable)
-                .editable('setValue', editable.default)
+                .editable('setValue', editable.default);
+
+            // console.log('editable.default', editable.default);
         });
 
         var columnNames = _(editables).pluck('field');
@@ -80,13 +83,18 @@
             // console.log('bt table editable-save.bs.table', e, name, record);
             var rec = that.settings.preSaveData(rowSnapshot, _(record).pick(columnNames));
             rec[idField] = rowSnapshot[idField];
-            $.post(that.settings.endpoint, JSON.stringify(rec),
-                function (response) {
+            $.ajax({
+                type: "PUT",
+                url: that.settings.endpoint,
+                data: JSON.stringify(rec),
+                dataType: 'json',
+                success: function (response, status, xhr) {
                     that.settings.success.call(that, response, rec);
-                }).fail(function (response) {
-                    that.settings.fail.call(that, response, rec);
+                },
+                error: function (xhr, status, err) {
+                    that.settings.fail.call(that, err, rec);
                 }
-            );
+            });
         });
 
         // handle revert if update gone wrong
@@ -97,38 +105,89 @@
         };
 
         // create button clicked
-        this.settings.buttons.save.click(function() {
-            var editableValues = _(editables).map(function(edt) {
-                return $('#' + edt.field)
-                    .editable('getValue', edt.default)[edt.field];
+        var btns = this.settings.buttons;
+        if (btns) {
+            $(btns.save).click(function() {
+                var editableValues = _(editables).map(function(edt) {
+                    return $('#' + edt.field)
+                        .editable('getValue', edt.default)[edt.field];
+                });
+
+                var newRecord = that.settings.preSaveData({}, _.object(columnNames, editableValues));
+
+                // todo implement update
+                // var data = that.settings.table.bootstrapTable('getData'),
+                //     index = _(data).chain().pluck(idField).indexOf(newRecord[idField]).value(),
+                //     update = {index: index, row: newRecord};
+
+                $.ajax({
+                    type: "POST",
+                    url: that.settings.endpoint,
+                    data: JSON.stringify(newRecord),
+                    dataType: 'json',
+                    success: function (response, status, xhr) {
+                        if (that.settings.success.call(that, response, newRecord)) {
+                            newRecord[idField] = response[idField];
+                            that.settings.table.bootstrapTable('append', newRecord);
+                            registerDelete();
+                        }
+                        $(btns.close).click();
+                    },
+                    error: function (xhr, status, err) {
+                        that.settings.fail.call(that, err, newRecord);
+                        $(btns.close).click();
+                    }
+                });
             });
 
-            var newRecord = that.settings.preSaveData({}, _.object(columnNames, editableValues));
+            var registerDelete = function () {
+                if (btns.delete) {
+                    $(btns.delete).click(function () {
+                        // console.log('clicked');
+                        var fake = _(editables).chain()
+                            .map(function (edt) {
+                                return [edt.field, edt.default];
+                            })
+                            .object().value();
 
-            // todo implement update
-            // var data = that.settings.table.bootstrapTable('getData'),
-            //     index = _(data).chain().pluck(idField).indexOf(newRecord[idField]).value(),
-            //     update = {index: index, row: newRecord};
+                        var fakeRecord = that.settings.preSaveData({}, fake);
+                        var id = $(this).data('value');
 
-            $.post(that.settings.endpoint, JSON.stringify(newRecord),
-                function (response) {
-                    if (that.settings.success.call(that, response, newRecord)) {
-                        newRecord[idField] = response[idField];
-                        that.settings.table.bootstrapTable('append', newRecord);
-                    }
-                    that.settings.buttons.close.click();
-                }).fail(function (response) {
-                    that.settings.fail.call(that, response, newRecord);
-                    that.settings.buttons.close.click();
+                        fakeRecord[idField] = id;
+
+                        $.ajax({
+                            type    : "DELETE",
+                            url     : that.settings.endpoint,
+                            data    : JSON.stringify(fakeRecord),
+                            dataType: 'json',
+                            success : function (response, status, xhr) {
+                                if (that.settings.success.call(that, response, fakeRecord)) {
+                                    that.settings.table.bootstrapTable('removeByUniqueId', id);
+                                }
+                                // fixme workaround! why should we registerDelete again?!
+                                registerDelete();
+                                $(btns.close).click();
+                            },
+                            error   : function (xhr, status, err) {
+                                that.settings.fail.call(that, err, fakeRecord);
+                                // fixme workaround! why should we registerDelete again?!
+                                registerDelete();
+                                $(btns.close).click();
+                            }
+                        });
+                    });
                 }
-            );
-
-        });
+            };
+            var opts = this.settings.table.bootstrapTable('getOptions');
+            if (opts.sidePagination == 'server') {
+                this.settings.table.on('load-success.bs.table', registerDelete);
+            } else registerDelete();
+        }
 
         return this;
     };
 
-    $.fn.editableModal.defaults = {
+    $.fn.editableCRUD.defaults = {
         mode: 'inline',
         idField: 'id',
         widthLabel: '30%',
@@ -145,13 +204,16 @@
         },
         success: function (response, record) {
             if (response.success) {
+                this.trigger('success', response, record);
                 return true;
             } else {
                 record[this.idField] && (this.revertLocalUpdate(record));
+                this.trigger('fail', response, record);
             }
         },
         fail: function (response, record) {
             record[this.idField] && (this.revertLocalUpdate(record));
+            this.trigger('fail', response, record);
         }
     };
 

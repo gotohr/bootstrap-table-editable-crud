@@ -2,7 +2,15 @@ $(function() {
     var btOptions = {
         columns: [
             {
-                field: 'id', title: 'id'
+                field: 'id', title: 'id', visible: true,
+                align: 'center', valign: 'middle',
+                formatter: function(val) {
+                    return [
+                        '<button type="button" class="delete btn btn-danger btn-xs" data-value="' + val + '">',
+                            'Delete',
+                        '</button>'
+                    ].join('');
+                }
             },
             {
                 field: 'isActive', title: 'Active?', align: 'center', valign: 'middle',
@@ -56,26 +64,60 @@ $(function() {
 
     var $bt = $('#bt-table').bootstrapTable('destroy').bootstrapTable(btOptions);
 
-    $('#upsertModal').editableModal({
+    var crud = $('#upsertModal').editableCRUD({
         table: $bt,
         btOptions: btOptions,
-        endpoint: '/post/data',
+        endpoint: '/endpoint',
         buttons: {
-            close: $('#closeModal'),
-            save: $('#saveChanges')
+            close: '#closeModal',
+            save: '#saveChanges',
+            delete: '#bt-table button.delete'
         }
+    });
+
+    crud.on('success', function(e, response, record) {
+        console.log('triggered success');
+        $.notify(response.msg, 'success');
+    });
+
+    crud.on('fail', function(e, response, record) {
+        console.log('triggered fail');
+        $.notify(response.msg);
     });
 
     //ajax emulation
     $.mockjax({
-        url: '/post/data',
+        url: '/endpoint',
         responseTime: 1000,
         response: function(settings) {
-            this.responseText = {
-                success: true,
-                msg: 'Created!',
-                id: 100
+            var data = eval('(' + settings.data + ')');
+            var that = this;
+            var map = {
+                POST: function() {
+                    that.responseText = {
+                        success: true,
+                        msg: 'Created!',
+                        id: 0
+                    };
+                },
+                PUT: function() {
+                    that.responseText = {
+                        success: true,
+                        msg: 'Updated!',
+                        id: data.id
+                    };
+                },
+                DELETE: function() {
+                    that.responseText = {
+                        success: true,
+                        msg: 'Deleted!',
+                        id: data.id
+                    };
+                }
             };
+            map[settings.type]();
+            console.log('settings', settings);
+            console.log('this.responseText', this.responseText);
         }
     });
 
