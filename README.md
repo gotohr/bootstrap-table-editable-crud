@@ -53,7 +53,7 @@ in crud configuration define `delete` action selector
      buttons: {
          close: '#closeModal',
          save: '#saveChanges',
-         delete: '#bt-table button.delete'
+         delete: 'button.delete'
      }
         
 ## Features

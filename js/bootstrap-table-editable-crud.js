@@ -129,7 +129,6 @@
                         if (that.settings.success.call(that, response, newRecord)) {
                             newRecord[idField] = response[idField];
                             that.settings.table.bootstrapTable('append', newRecord);
-                            registerDelete();
                         }
                         $(btns.close).click();
                     },
@@ -140,21 +139,18 @@
                 });
             });
 
+            var fake = _(editables).chain()
+                .map(function (edt) {
+                    return [edt.field, edt.default];
+                })
+                .object().value();
+
             var registerDelete = function () {
                 if (btns.delete) {
-                    $(btns.delete).click(function () {
-                        // console.log('clicked');
-                        var fake = _(editables).chain()
-                            .map(function (edt) {
-                                return [edt.field, edt.default];
-                            })
-                            .object().value();
-
+                    that.settings.table.on('click', btns.delete, function () {
                         var fakeRecord = that.settings.preSaveData({}, fake);
                         var id = $(this).data('value');
-
                         fakeRecord[idField] = id;
-
                         $.ajax({
                             type    : "DELETE",
                             url     : that.settings.endpoint,
@@ -164,14 +160,10 @@
                                 if (that.settings.success.call(that, response, fakeRecord)) {
                                     that.settings.table.bootstrapTable('removeByUniqueId', id);
                                 }
-                                // fixme workaround! why should we registerDelete again?!
-                                registerDelete();
                                 $(btns.close).click();
                             },
                             error   : function (xhr, status, err) {
                                 that.settings.fail.call(that, err, fakeRecord);
-                                // fixme workaround! why should we registerDelete again?!
-                                registerDelete();
                                 $(btns.close).click();
                             }
                         });
@@ -204,16 +196,16 @@
         },
         success: function (response, record) {
             if (response.success) {
-                this.trigger('success', response, record);
+                this.trigger('success', { response: response, record: record });
                 return true;
             } else {
                 record[this.idField] && (this.revertLocalUpdate(record));
-                this.trigger('fail', response, record);
+                this.trigger('fail', { response: response, record: record });
             }
         },
         fail: function (response, record) {
             record[this.idField] && (this.revertLocalUpdate(record));
-            this.trigger('fail', response, record);
+            this.trigger('fail', { response: response, record: record });
         }
     };
 

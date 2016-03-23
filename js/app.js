@@ -71,18 +71,18 @@ $(function() {
         buttons: {
             close: '#closeModal',
             save: '#saveChanges',
-            delete: '#bt-table button.delete'
+            delete: 'button.delete'
         }
     });
 
-    crud.on('success', function(e, response, record) {
+    crud.on('success', function(e, data) {
         console.log('triggered success');
-        $.notify(response.msg, 'success');
+        $.notify(data.response.msg + ' ' + data.record.id, 'success');
     });
 
-    crud.on('fail', function(e, response, record) {
+    crud.on('fail', function(e, data) {
         console.log('triggered fail');
-        $.notify(response.msg);
+        $.notify(data.response.msg + ' ' + data.record.id);
     });
 
     //ajax emulation
@@ -96,21 +96,21 @@ $(function() {
                 POST: function() {
                     that.responseText = {
                         success: true,
-                        msg: 'Created!',
+                        msg: 'Created',
                         id: 0
                     };
                 },
                 PUT: function() {
                     that.responseText = {
                         success: true,
-                        msg: 'Updated!',
+                        msg: 'Updated',
                         id: data.id
                     };
                 },
                 DELETE: function() {
                     that.responseText = {
                         success: true,
-                        msg: 'Deleted!',
+                        msg: 'Deleted',
                         id: data.id
                     };
                 }
