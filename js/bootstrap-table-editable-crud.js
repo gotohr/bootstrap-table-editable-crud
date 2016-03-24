@@ -6,6 +6,22 @@
 
     'use strict';
 
+    $.fn.highlight = function() {
+       $(this).each(function() {
+            var el = $(this);
+            el.before("<div/>")
+            el.prev()
+                .width(el.width())
+                .height(el.height())
+                .css({
+                    "position": "absolute",
+                    "background-color": "#ffff99",
+                    "opacity": ".9"
+                })
+                .fadeOut(1500);
+        });
+    };
+
     $.fn.editableCRUD = function(options) {
 
         this.settings = $.extend( true, $.fn.editableCRUD.defaults, options );
@@ -108,9 +124,21 @@
         var btns = this.settings.buttons;
         if (btns) {
             $(btns.save).click(function() {
+                var editableValidation = _(editables).chain()
+                    .map(function(edt) {
+                        var result = $('#' + edt.field).editable('validate')[edt.field];
+                        return result !== undefined ? [edt.field, result] : false;
+                    }).compact().object().value();
+
+                // todo display validation error msg
+                _(editableValidation).each(function(msg, field) {
+                    $('#' + field).highlight();
+                });
+
+                if (!_.isEmpty(editableValidation)) return;
+
                 var editableValues = _(editables).map(function(edt) {
-                    return $('#' + edt.field)
-                        .editable('getValue', edt.default)[edt.field];
+                    return $('#' + edt.field).editable('getValue', edt.default)[edt.field];
                 });
 
                 var newRecord = that.settings.preSaveData({}, _.object(columnNames, editableValues));
